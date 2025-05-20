@@ -10,6 +10,7 @@ use ggus::{GGufMetaMapExt, ggml_quants::digit_layout::types};
 use log::info;
 use nn::{Dim, Distribution, Graph, GraphBuilder, LLaMA, NNGraph, Tensor, TensorMeta, op as nn_op};
 use operators::{
+    Alloc,
     Operator,
     attention_kv_cached::cuda::Operator as Attn,
     cuda::{self, Device, Gpu},
