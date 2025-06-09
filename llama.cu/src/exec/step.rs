@@ -123,6 +123,7 @@ impl<'ctx> Handle<'ctx> {
             "swiglu" => launch!(Swiglu),
             #[cfg(nccl)]
             "all-reduce" => launch!(AllReduce),
+            "dequantize" => launch!(Dequantize),
             "empty" => {}
             _ => panic!(
                 "{}",

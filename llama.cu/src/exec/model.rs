@@ -48,14 +48,14 @@ impl<'ctx> ModelExec<'ctx> {
             .0
             .topo
             .global_inputs()
-            .map(|i| graph.0.edges[i].clone())
+            .map(|i| graph.0.edges[i].tensor().clone())
             .collect::<Box<_>>();
         let outputs = graph
             .0
             .topo
             .global_outputs()
             .iter()
-            .map(|&i| graph.0.edges[i].clone())
+            .map(|&i| graph.0.edges[i].tensor().clone())
             .collect::<Box<_>>();
         let exec = graph.into_exec();
 

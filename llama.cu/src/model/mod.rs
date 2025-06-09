@@ -73,9 +73,24 @@ impl GGufModel<'_> {
         let dh = meta![self => llm_rope_dimension_count; d / nh];
         let di = meta![self => llm_feed_forward_length];
         let epsilon = meta![self => llm_attention_layer_norm_rms_epsilon; 1e-5];
-        let dt_linear = self.tensors["blk.0.attn_qkv.weight"].dt();
+        let (dt_q, dt_k, dt_v) = if self.tensors.contains_key("blk.0.attn_q.weight") {
+            (self.tensors["blk.0.attn_q.weight"].dt(), self.tensors["blk.0.attn_k.weight"].dt(), self.tensors["blk.0.attn_v.weight"].dt())
+        } else {
+            (self.tensors["blk.0.attn_qkv.weight"].dt(), self.tensors["blk.0.attn_qkv.weight"].dt(), self.tensors["blk.0.attn_qkv.weight"].dt())
+        };
+        let (dt_gate, dt_up) = if self.tensors.contains_key("blk.0.ffn_gate.weight") {
+            (self.tensors["blk.0.ffn_gate.weight"].dt(), self.tensors["blk.0.ffn_up.weight"].dt())
+        } else {
+            (self.tensors["blk.0.ffn_gate_up.weight"].dt(), self.tensors["blk.0.ffn_up.weight"].dt())
+        };
+        let dt_output = self.tensors["blk.0.attn_output.weight"].dt();
+        let dt_down = self.tensors["blk.0.ffn_down.weight"].dt();
+    
 
-        let get = |name: &str| self.tensors[name].as_deref();
+        let get = |name: &str| {
+            println!("name: {}", name);
+            self.tensors[name].as_deref()
+        };
 
         let token_embd = get("token_embd.weight");
         let out_norm = get("output_norm.weight");
@@ -109,19 +124,19 @@ impl GGufModel<'_> {
                         Attention {
                             nh,
                             nkvh,
-                            qkv: Linear::new(
-                                dt_linear,
+                            qkv: nn::QKVFormat::Combined(Linear::new(
+                                dt_q,
                                 [(nh + nkvh + nkvh) * dh, d],
                                 get(&format!("blk.{iblk}.attn_qkv.weight")),
                                 dt_bias.map(|dt| (dt, get(&format!("blk.{iblk}.attn_qkv.bias")))),
-                            ),
+                            )),
                             rope: Some(RoPE {
                                 nctx,
                                 sin: get("sin_table"),
                                 cos: get("cos_table"),
                             }),
                             output: Linear::new(
-                                dt_linear,
+                                dt_output,
                                 [d, nh * dh],
                                 get(&format!("blk.{iblk}.attn_output.weight")),
                                 None,
@@ -136,15 +151,15 @@ impl GGufModel<'_> {
                             },
                         },
                         Mlp {
-                            up: Linear::new(
-                                dt_linear,
+                            up: nn::FFNUpFormat::Combined(Linear::new(
+                                dt_gate,
                                 [di * 2, d],
                                 get(&format!("blk.{iblk}.ffn_gate_up.weight")),
                                 None,
-                            ),
+                            )),
                             act: Activation::SwiGLU,
                             down: Linear::new(
-                                dt_linear,
+                                dt_down,
                                 [d, di],
                                 get(&format!("blk.{iblk}.ffn_down.weight")),
                                 None,
@@ -162,7 +177,7 @@ impl GGufModel<'_> {
                         scale: out_norm,
                     },
                 },
-                lm_head: Linear::new(out_linear.dt(), [nvoc, d], out_linear, None),
+                lm_head: Linear::new(get("token_embd.weight").dt(), [nvoc, d], out_linear, None),
             }),
         }
     }

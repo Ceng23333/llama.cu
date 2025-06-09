@@ -150,6 +150,7 @@ impl GemmLayout {
         let mut c = Matrix::from(c);
         let mut a = Matrix::from(a);
         let mut b = Matrix::from(b);
+        // println!("{}", vec!["="; 100].join(""));
         if c.r != a.r || c.c != b.c || a.c != b.r {
             panic!()
         }
@@ -208,6 +209,7 @@ struct Matrix {
 
 impl<const N: usize> From<&(DigitLayout, ArrayLayout<N>)> for Matrix {
     fn from((dt, layout): &(DigitLayout, ArrayLayout<N>)) -> Self {
+        // println!("[linear::Matrix::from]dt: {}, shape: {:?}", dt.to_string(), layout.shape());
         let [batch @ .., r, c] = layout.shape() else {
             unreachable!()
         };
@@ -229,7 +231,11 @@ impl<const N: usize> From<&(DigitLayout, ArrayLayout<N>)> for Matrix {
         Self {
             batch,
             stride,
-            r: *r,
+            r: if dt.group_size() == 1 {
+                *r
+            } else {
+                r * dt.group_size()
+            },
             c: *c,
             rs: rs / unit,
             cs: cs / unit,

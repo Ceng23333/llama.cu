@@ -78,18 +78,18 @@ impl Service {
             let mut gguf = GGufModel::read(maps.iter().map(|x| &**x));
             gguf.insert_sin_cos();
 
-            let tokenizer = Bpe::from_gguf(&gguf);
-            let chat_template = gguf.chat_template(&tokenizer);
-            let cache_template = gguf.kv_cache();
-            let eos = meta![gguf => tokenizer_ggml_eos_token_id];
+            // let tokenizer = Bpe::from_gguf(&gguf);
+            // let chat_template = gguf.chat_template(&tokenizer);
+            // let cache_template = gguf.kv_cache();
+            // let eos = meta![gguf => tokenizer_ggml_eos_token_id];
 
-            once_.get_or_init(|| ModelComponents {
-                tokenizer,
-                chat_template,
-                cache_template,
-                eos,
-            });
-            drop(once_);
+            // once_.get_or_init(|| ModelComponents {
+            //     tokenizer,
+            //     chat_template,
+            //     cache_template,
+            //     eos,
+            // });
+            // drop(once_);
 
             let llama = gguf.llama();
             engine(llama, &gpus_, commands, outputs, use_cuda_grpah)

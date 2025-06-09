@@ -23,6 +23,7 @@ pub use linear::Linear;
 pub use rms_norm::RmsNorm;
 pub use rope::Rope;
 pub use swiglu::Swiglu;
+pub use dequantize::Dequantize;
 
 pub trait Operator {
     fn launch<const N: usize>(

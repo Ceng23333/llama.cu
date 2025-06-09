@@ -48,8 +48,8 @@ impl<'ctx> ModelGroup<'ctx> {
             .build(
                 llama.tensor_parallel(dist),
                 [
-                    TensorMeta::new(types::U32, [Dim::var("n_tok")]),
-                    TensorMeta::new(types::U32, [Dim::var("n_tok")]),
+                    TensorMeta::new(types::U32, [Dim::from("n_tok")]),
+                    TensorMeta::new(types::U32, [Dim::from("n_tok")]),
                 ],
             )
             .unwrap();
@@ -181,6 +181,7 @@ fn builder() -> GraphBuilder {
         .register_op("swiglu", op::activation::SwiGLU)
         .register_op("concat", op::concat::Concat)
         .register_op("split", op::split::Split)
-        .register_op("all-reduce", op::all_reduce::AllReduce);
+        .register_op("all-reduce", op::all_reduce::AllReduce)
+        .register_op("dequantize", op::dequantize::Dequantize);
     ans
 }
