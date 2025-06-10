@@ -27,13 +27,14 @@ impl GenerateArgs {
             .expect("No model configuration found. Please provide at least one model path.");
 
         let service = Service::new(
-            model_config.path,
-            &model_config.gpus,
+            model_config.0,
+            &model_config.1,
             !base.no_cuda_graph
         );
         
         let session = Session {
             id: SessionId(0),
+            model: "default".to_string(),
             sample_args: Default::default(),
             cache: service.terminal().new_cache(),
         };
@@ -43,7 +44,7 @@ impl GenerateArgs {
         }
         service
             .terminal()
-            .start(session, &service.terminal().tokenize(&prompt), model_config.max_steps);
+            .start(session, &service.terminal().tokenize(&prompt), model_config.2);
 
         let mut prefill = Duration::ZERO;
         let mut decode = Duration::ZERO;

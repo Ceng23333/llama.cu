@@ -9,6 +9,7 @@ use crate::{
     handle::Handle,
     op::{FastEmbedding, random_sample::KVPair},
 };
+use log::debug;
 use nn::{Distribution, LLaMA, Tensor};
 use operators::{
     Operator,
@@ -180,6 +181,7 @@ impl Worker<'_> {
             use_cuda_graph,
         } = self;
 
+        debug!("worker::lead dev: {}", dev.index());
         let gpu = Gpu::new(dev.retain_primary(), Default::default());
         let attn = Attn::new(&gpu);
         gpu.apply(|ctx| {
@@ -214,16 +216,25 @@ impl Worker<'_> {
                         fast_map,
                         finished,
                     } = manager.prepare();
+                    debug!("receive command, tokens: {:?}, output: {:?}", tokens, output);
                     if !overflow.is_empty()
                         && outputs.send(Output::Overflow(overflow.into())).is_err()
                     {
                         break;
                     }
+                    debug!("handling overflow check completed");
+
                     let out_idx = out_idx(&reqs, output.iter().map(|(_, len)| *len), ctx);
+                    debug!("output index len: {}", out_idx.len());
+
                     // 加载输入
                     let (key, tok) = models.load_toks(&tokens, &loading);
+                    debug!("tokens loaded with key: {:?}", key);
+
                     // 快速启动路径
                     fast_embd.launch(tok, &pre_kv_pairs, fast_map, &mut handle, &loading, &stream);
+                    debug!("fast embedding launched");
+
                     // 通知协处理单元
                     #[cfg(nccl)]
                     if let Some(barrier) = &barrier {
@@ -233,21 +244,33 @@ impl Worker<'_> {
                         });
                         barrier.wait();
                         models.share_toks(key, &mut handle, &stream);
+                        debug!("coprocessor unit notified and tokens shared");
                     }
+
                     // 推理
                     let x = models.launch(key, &reqs, &mut handle, &stream);
+                    debug!("model inference completed");
+
                     // 输出
                     let kv_pairs = output_head.launch(x, out_idx, sample, &mut handle, &stream);
+                    debug!("output head launched");
+
                     stream.memcpy_d2d(&mut pre_kv_pairs[..kv_pairs.len()], &kv_pairs);
+                    debug!("kv pairs copied to device memory");
+
                     let output = Output::Complete {
                         output: output.into(),
                         kv_pair: kv_pairs.sporulate(),
                         event: stream.record().sporulate(),
                         finished: finished.into(),
                     };
+                    debug!("output struct created");
+
                     if outputs.send(output).is_err() {
                         break;
                     }
+                    debug!("output sent successfully");
+                    // std::thread::sleep(std::time::Duration::from_secs(1));
                 }
             }
             // 通知协处理单元退出

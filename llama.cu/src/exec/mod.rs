@@ -61,6 +61,7 @@ pub struct SessionId(pub usize);
 
 pub struct Session {
     pub id: SessionId,
+    pub model: String,
     pub sample_args: SampleArgs,
     pub cache: DistKVCache,
 }

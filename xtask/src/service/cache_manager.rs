@@ -21,6 +21,7 @@ impl CacheManager {
 
     pub fn send(
         &mut self,
+        model: String,
         tokens: Vec<utok>,
         sample_args: SampleArgs,
         max_steps: usize,
@@ -41,12 +42,13 @@ impl CacheManager {
                 cache.pos = pos;
                 cache
             }
-            None => self.terminal.new_cache(),
+            None => self.terminal.new_cache_with_model(&model).unwrap(),
         };
         let pos = cache.pos;
         self.terminal.start(
             Session {
                 id,
+                model,
                 sample_args,
                 cache,
             },

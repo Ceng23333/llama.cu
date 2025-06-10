@@ -4,7 +4,7 @@ mod openai;
 mod response;
 
 use std::collections::HashMap;
-use crate::{BaseArgs, ModelConfig, service::openai::create_chat_completion_response};
+use crate::{BaseArgs, service::openai::create_chat_completion_response};
 use cache_manager::CacheManager;
 use error::*;
 use http_body_util::{BodyExt, combinators::BoxBody};
@@ -16,7 +16,7 @@ use hyper::{
 };
 use hyper_util::rt::TokioIo;
 use llama_cu::{
-    Message, Received, ReturnReason, SampleArgs, Service, SessionId, Terminal, TextBuf, utok,
+    Message, ModelConfig, Received, ReturnReason, SampleArgs, Service, SessionId, Terminal, TextBuf, utok,
 };
 use log::{debug, info, warn};
 use openai::V1_CHAT_COMPLETIONS;
@@ -30,10 +30,8 @@ use response::{error, text_stream};
 use serde_json::Value;
 use std::{
     collections::BTreeMap,
-    ffi::c_int,
     future::Future,
     net::{Ipv4Addr, SocketAddr, SocketAddrV4},
-    path::PathBuf,
     pin::Pin,
     sync::{Arc, Mutex},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -78,11 +76,15 @@ async fn start_infer_service(
     info!("start service at {addr}");
 
     info!("model_name list: {:?}", model_configs.keys());
-    let model_config = model_configs.get("model_0").cloned().unwrap();
-    let model = model_config.path;
-    let gpus = model_config.gpus;
-    let max_steps = model_config.max_steps;
-    let service = Service::new(model, &gpus, use_cuda_graph);
+    let (model, gpus, max_steps) = model_configs.get("default").cloned().unwrap();
+    // let service = Service::new(model, &gpus, use_cuda_graph);
+    let service = Service::new_with_configs(
+        model_configs
+            .into_iter()
+            .map(|(name, (model, gpus, max_steps))| (name, (model, gpus, max_steps)))
+            .collect(),
+        use_cuda_graph,
+    );
     let sessions: BTreeMap<SessionId, SessionInfo> = BTreeMap::new();
 
     let service_manager = Arc::new(ServiceManager {
@@ -101,6 +103,7 @@ async fn start_infer_service(
 
             // 先处理输出
             for (session_id, tokens) in outputs {
+                debug!("recv from output from session_id: {:?}, tokens: {:?}", session_id, tokens);
                 if tokens.is_empty() {
                     continue;
                 }
@@ -296,7 +299,7 @@ fn complete_chat(
             .cache_manager
             .lock()
             .unwrap()
-            .send(tokens, sample_args, max_steps);
+            .send(model.clone(), tokens, sample_args, max_steps);
 
     let session_info = SessionInfo {
         sender,

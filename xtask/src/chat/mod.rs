@@ -25,16 +25,16 @@ impl ChatArgs {
             .expect("No model configuration found. Please provide at least one model path.");
 
         let service = Service::new(
-            model_config.path,
-            &model_config.gpus,
+            model_config.0,
+            &model_config.1,
             !base.no_cuda_graph
         );
         
         if !advanced {
-            simple(service, model_config.max_steps)
+            simple(service, model_config.2)
         } else {
             let terminal = ratatui::init();
-            let result = tui::App::new(service, model_config.max_steps).run(terminal);
+            let result = tui::App::new(service, model_config.2).run(terminal);
             ratatui::restore();
             result.unwrap()
         }
@@ -44,6 +44,7 @@ impl ChatArgs {
 fn simple(service: Service, max_steps: usize) {
     let mut session = Some(Session {
         id: SessionId(0),
+        model: "default".to_string(),
         sample_args: Default::default(),
         cache: service.terminal().new_cache(),
     });

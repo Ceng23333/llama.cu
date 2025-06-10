@@ -17,6 +17,7 @@ impl AppSession {
             msgs: vec![String::new()],
             info: Some(Session {
                 id: session_id,
+                model: "default".to_string(),
                 sample_args: Default::default(),
                 cache,
             }),

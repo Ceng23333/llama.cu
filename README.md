@@ -100,3 +100,12 @@ Options:
   -p, --port <PORT>
   -h, --help
 ```
+
+```shell
+cargo service --port 9988 --model-path ../fm9g-7B-sft-v0.0-F16.gguf --gpus 0,1 --model-path ../DeepSeek-R1-Distill-Qwen-32B-v0.0-F16.gguf --gpus 2,3,4,5
+
+cargo service --port 9988 --model-path ../fm9g-7B-sft-v0.0-F16.gguf --gpus 0 --model-path ../fm9g-7B-sft-v0.0-F16.gguf --gpus 5
+
+cargo service --port 9988 --model-path ../fm9g-7B-sft-v0.0-F16.gguf --gpus 0 --model-name default --model-path ../fm9g-7B-sft-v0.0-F16.gguf --gpus 5
+
+```
