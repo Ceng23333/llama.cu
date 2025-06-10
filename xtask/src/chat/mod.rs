@@ -20,15 +20,21 @@ impl ChatArgs {
             base,
             tui: advanced,
         } = self;
-        let gpus = base.gpus();
-        let max_steps = base.max_steps();
+        
+        let model_config = base.get_default_model()
+            .expect("No model configuration found. Please provide at least one model path.");
 
-        let service = Service::new(base.model, &gpus, !base.no_cuda_graph);
+        let service = Service::new(
+            model_config.path,
+            &model_config.gpus,
+            !base.no_cuda_graph
+        );
+        
         if !advanced {
-            simple(service, max_steps)
+            simple(service, model_config.max_steps)
         } else {
             let terminal = ratatui::init();
-            let result = tui::App::new(service, max_steps).run(terminal);
+            let result = tui::App::new(service, model_config.max_steps).run(terminal);
             ratatui::restore();
             result.unwrap()
         }

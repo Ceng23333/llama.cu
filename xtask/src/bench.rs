@@ -20,15 +20,22 @@ impl BenchArgs {
         let Self {
             base,
             prompt,
-            use_template,
             batch,
+            use_template,
         } = self;
-        let gpus = base.gpus();
-        let max_steps = base.max_steps();
+
         let mut prompt = prompt.unwrap_or("Once upon a time,".into());
         let batch = batch.unwrap_or(1);
+        
+        let model_config = base.get_default_model()
+            .expect("No model configuration found. Please provide at least one model path.");
 
-        let service = Service::new(base.model, &gpus, !base.no_cuda_graph);
+        let service = Service::new(
+            model_config.path,
+            &model_config.gpus,
+            !base.no_cuda_graph
+        );
+        
         if use_template {
             prompt = service.terminal().render(&[Message::user(&prompt)])
         }
@@ -41,7 +48,7 @@ impl BenchArgs {
             };
             service
                 .terminal()
-                .start(session, &service.terminal().tokenize(&prompt), max_steps);
+                .start(session, &service.terminal().tokenize(&prompt), model_config.max_steps);
         }
 
         let mut prefill = Duration::ZERO;

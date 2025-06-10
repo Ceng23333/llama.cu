@@ -3,7 +3,8 @@ mod error;
 mod openai;
 mod response;
 
-use crate::{BaseArgs, service::openai::create_chat_completion_response};
+use std::collections::HashMap;
+use crate::{BaseArgs, ModelConfig, service::openai::create_chat_completion_response};
 use cache_manager::CacheManager;
 use error::*;
 use http_body_util::{BodyExt, combinators::BoxBody};
@@ -54,15 +55,14 @@ pub struct ServiceArgs {
 impl ServiceArgs {
     pub fn service(self) {
         let Self { base, port } = self;
-        let gpus = base.gpus();
-        let max_steps = base.max_steps();
+        
+        let model_configs = base.get_model_configs();
+
         tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(start_infer_service(
-                base.model,
+                model_configs,
                 port,
-                gpus,
-                max_steps,
                 !base.no_cuda_graph,
             ))
             .unwrap()
@@ -70,15 +70,18 @@ impl ServiceArgs {
 }
 
 async fn start_infer_service(
-    model: PathBuf,
+    model_configs: HashMap<String, ModelConfig>,
     port: u16,
-    gpus: Box<[c_int]>,
-    max_steps: usize,
     use_cuda_graph: bool,
 ) -> std::io::Result<()> {
     let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port));
     info!("start service at {addr}");
 
+    info!("model_name list: {:?}", model_configs.keys());
+    let model_config = model_configs.get("model_0").cloned().unwrap();
+    let model = model_config.path;
+    let gpus = model_config.gpus;
+    let max_steps = model_config.max_steps;
     let service = Service::new(model, &gpus, use_cuda_graph);
     let sessions: BTreeMap<SessionId, SessionInfo> = BTreeMap::new();
 

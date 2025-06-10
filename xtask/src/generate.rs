@@ -20,11 +20,18 @@ impl GenerateArgs {
             prompt,
             use_template,
         } = self;
-        let gpus = base.gpus();
-        let max_steps = base.max_steps();
-        let mut prompt = prompt.unwrap_or("Once upon a time,".into());
 
-        let service = Service::new(base.model, &gpus, !base.no_cuda_graph);
+        let mut prompt = prompt.unwrap_or("Once upon a time,".into());
+        
+        let model_config = base.get_default_model()
+            .expect("No model configuration found. Please provide at least one model path.");
+
+        let service = Service::new(
+            model_config.path,
+            &model_config.gpus,
+            !base.no_cuda_graph
+        );
+        
         let session = Session {
             id: SessionId(0),
             sample_args: Default::default(),
@@ -36,7 +43,7 @@ impl GenerateArgs {
         }
         service
             .terminal()
-            .start(session, &service.terminal().tokenize(&prompt), max_steps);
+            .start(session, &service.terminal().tokenize(&prompt), model_config.max_steps);
 
         let mut prefill = Duration::ZERO;
         let mut decode = Duration::ZERO;
